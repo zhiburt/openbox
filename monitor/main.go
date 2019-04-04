@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gofrs/uuid"
 	"github.com/streadway/amqp"
 )
 
@@ -30,27 +31,48 @@ func main() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"task_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		"",    // name
+		false, // durable
+		false, // delete when usused
+		true,  // exclusive
+		false, // noWait
+		nil,   // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+	failOnError(err, "Failed to register a consumer")
+
+	uuid, _ := uuid.NewV4()
 	body := bodyFrom(os.Args)
 	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
+		"",           // exchange
+		"task_queue", // routing key
+		false,        // mandatory
 		false,
 		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "text/plain",
-			Body:         []byte(body),
+			ReplyTo:       q.Name,
+			CorrelationId: uuid.String(),
+			ContentType:   "text/plain",
+			Body:          []byte(body),
 		})
 	failOnError(err, "Failed to publish a message")
+
+	for d := range msgs {
+		if uuid.String() == d.CorrelationId {
+			log.Printf(" [x] Resp from server %s", d.Body)
+			break
+		}
+	}
+
 	log.Printf(" [x] Sent %s", body)
 }
 

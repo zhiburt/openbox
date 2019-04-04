@@ -2,19 +2,27 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:7ab9394e38507ed6c39d8843c40152198689e6ce81235a761784fdd7bfa29f37"
-  name = "github.com/streadway/amqp"
-  packages = [
-    ".",
-    "internal/proto",
-  ]
+  digest = "1:bed9d72d596f94e65fff37f4d6c01398074a6bb1c3f3ceff963516bd01db6ff5"
+  name = "github.com/gofrs/uuid"
+  packages = ["."]
   pruneopts = "UT"
-  revision = "16ed540749f64417a42006ad795b01c0f5d4677a"
+  revision = "6b08a5c5172ba18946672b49749cde22873dd7c2"
+  version = "v3.2.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:d6bb6f3240a488ffe5bb6952b513569d009927dcb20ff94885f87b76cef2b698"
+  name = "github.com/streadway/amqp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "75d898a42a940fbc854dfd1a4199eabdc00cf024"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = ["github.com/streadway/amqp"]
+  input-imports = [
+    "github.com/gofrs/uuid",
+    "github.com/streadway/amqp",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

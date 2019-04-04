@@ -17,9 +17,13 @@ func failOnError(err error, msg string) {
 
 func main() {
 	var net = "localhost"
+	var servername = "rabbitmqworker"
 	if n := os.Getenv("NETWORKNAME"); n != "" {
 		log.Println("network", n)
 		net = n
+	}
+	if n := os.Getenv("SERVER_NAME"); n != "" {
+		servername = n
 	}
 
 	conn, err := amqp.Dial("amqp://guest:guest@" + net + ":5672/")
@@ -67,6 +71,17 @@ func main() {
 			t := time.Duration(dot_count)
 			time.Sleep(t * time.Second)
 			log.Printf("Done")
+
+			err = ch.Publish(
+				"",        // exchange
+				d.ReplyTo, // routing key
+				false,     // mandatory
+				false,     // immediate
+				amqp.Publishing{
+					ContentType:   "text/plain",
+					CorrelationId: d.CorrelationId,
+					Body:          []byte(servername),
+				})
 		}
 		log.Printf("CLOSED CONN")
 		os.Exit(1)
