@@ -4,20 +4,16 @@ import (
 	"bytes"
 	"log"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
 
+	"github.com/openbox/worker/filesystem"
 	"github.com/streadway/amqp"
 )
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-	}
-}
-
-func main() {
-	var net = "localhost"
-	var servername = "rabbitmqworker"
+func init() {
 	if n := os.Getenv("NETWORKNAME"); n != "" {
 		log.Println("network", n)
 		net = n
@@ -25,7 +21,19 @@ func main() {
 	if n := os.Getenv("SERVER_NAME"); n != "" {
 		servername = n
 	}
+	if n := os.Getenv("ROOT"); n != "" {
+		root = n
+	}
 
+}
+
+var (
+	net        = "localhost"
+	servername = "rabbitmqworker"
+	root       = "."
+)
+
+func main() {
 	conn, err := amqp.Dial("amqp://guest:guest@" + net + ":5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
@@ -64,6 +72,8 @@ func main() {
 
 	forever := make(chan bool)
 
+	var fs = filesystem.NewFilesystem(root)
+
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
@@ -71,6 +81,9 @@ func main() {
 			t := time.Duration(dot_count)
 			time.Sleep(t * time.Second)
 			log.Printf("Done")
+
+			err = fs.Create(filesystem.NewUser(servername), filesystem.NewFile(string(d.Body), "clear", strings.NewReader("")))
+			failOnError(err, "Failed to create a file")
 
 			err = ch.Publish(
 				"",        // exchange
@@ -87,6 +100,19 @@ func main() {
 		os.Exit(1)
 	}()
 
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+		<-c
+		forever <- true
+	}()
+
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
+}
+
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+	}
 }
