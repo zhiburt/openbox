@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/gofrs/uuid"
+	"github.com/openbox/monitor/communication"
 	"github.com/streadway/amqp"
 )
 
@@ -62,7 +64,7 @@ func main() {
 			ReplyTo:       q.Name,
 			CorrelationId: uuid.String(),
 			ContentType:   "text/plain",
-			Body:          []byte(body),
+			Body:          body,
 		})
 	failOnError(err, "Failed to publish a message")
 
@@ -76,12 +78,24 @@ func main() {
 	log.Printf(" [x] Sent %s", body)
 }
 
-func bodyFrom(args []string) string {
-	var s string
+func bodyFrom(args []string) []byte {
+	var name string
+	var user string
+	var body string
 	if (len(args) < 2) || os.Args[1] == "" {
-		s = "hello"
+		name = "hello.clead"
+		user = "maxim"
+		body = "hello world"
 	} else {
-		s = strings.Join(args[1:], " ")
+		name = args[2]
+		user = args[1]
+		body = args[3]
 	}
-	return s
+	b, _ := json.Marshal(message(user, name, body))
+	return b
+}
+
+func message(user, name, body string) communication.Message {
+	n := strings.Split(name, ".")
+	return communication.Message{user, []byte(body), n[0], n[1]}
 }

@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
+
+	"github.com/openbox/worker/communication"
 
 	"github.com/openbox/worker/filesystem"
 	"github.com/streadway/amqp"
@@ -76,14 +79,23 @@ func main() {
 
 	go func() {
 		for d := range msgs {
+			m := &communication.Message{}
+			json.Unmarshal(d.Body, m)
+
 			log.Printf("Received a message: %s", d.Body)
 			dot_count := bytes.Count(d.Body, []byte("."))
 			t := time.Duration(dot_count)
 			time.Sleep(t * time.Second)
 			log.Printf("Done")
 
-			err = fs.Create(filesystem.NewUser(servername), filesystem.NewFile(string(d.Body), "clear", strings.NewReader("")))
+			err = fs.Create(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
 			failOnError(err, "Failed to create a file")
+
+			f, err := fs.Lookup(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
+			failOnError(err, "Failed to create a file")
+
+			content, _ := ioutil.ReadAll(f.Body())
+			log.Println("content", content)
 
 			err = ch.Publish(
 				"",        // exchange
@@ -93,7 +105,7 @@ func main() {
 				amqp.Publishing{
 					ContentType:   "text/plain",
 					CorrelationId: d.CorrelationId,
-					Body:          []byte(servername),
+					Body:          []byte(servername + " " + f.Name() + " " + string(content)),
 				})
 		}
 		log.Printf("CLOSED CONN")

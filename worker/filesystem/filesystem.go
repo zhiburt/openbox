@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -38,10 +39,7 @@ type defaultFilesystem struct {
 }
 
 func (fs *defaultFilesystem) Create(user User, file File) error {
-	path, err := fs.userfolder(user)
-	if err != nil {
-		return err
-	}
+	path, _ := fs.userfolder(user)
 
 	return create(path, file)
 }
@@ -55,10 +53,7 @@ func (fs *defaultFilesystem) Remove(user User, file File) error {
 }
 
 func (fs *defaultFilesystem) Lookup(user User, file File) (File, error) {
-	path, err := fs.userfolder(user)
-	if err != nil {
-		return nil, err
-	}
+	path, _ := fs.userfolder(user)
 
 	return lookup(path, file)
 }
@@ -74,13 +69,19 @@ func (fs defaultFilesystem) userfolder(user User) (string, error) {
 
 func create(pathto string, f File) error {
 	pathto = filepath.Join(pathto, f.Name()+"."+f.Extension())
-	_, err := os.Create(pathto)
+	file, err := os.Create(pathto)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
+	reader := io.TeeReader(f.Body(), file)
+	_, err = ioutil.ReadAll(reader)
 	return err
 }
 
 func lookup(pathto string, f File) (File, error) {
-	pathto = filepath.Join(pathto, f.Name())
+	pathto = filepath.Join(pathto, f.Name()+"."+f.Extension())
 	file, err := os.Open(pathto)
 	if err != nil {
 		return nil, err
