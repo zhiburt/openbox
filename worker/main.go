@@ -88,25 +88,56 @@ func main() {
 			time.Sleep(t * time.Second)
 			log.Printf("Done")
 
-			err = fs.Create(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
-			failOnError(err, "Failed to create a file")
+			if m.Type != "" {
+				log.Println("look up")
+				f, err := fs.Lookup(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
+				if err != nil {
+					log.Println("didn't find", err)
+					err = ch.Publish(
+						"",     // exchange
+						q.Name, // routing key
+						false,  // mandatory
+						false,  // immediate
+						amqp.Publishing{
+							ContentType:   "application/json",
+							CorrelationId: d.CorrelationId,
+							Body:          d.Body,
+							ReplyTo:       d.ReplyTo,
+						})
+					continue
+				}
+				log.Println("Found")
 
-			f, err := fs.Lookup(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
-			failOnError(err, "Failed to create a file")
+				content, _ := ioutil.ReadAll(f.Body())
+				log.Println("content", content)
 
-			content, _ := ioutil.ReadAll(f.Body())
-			log.Println("content", content)
+				err = ch.Publish(
+					"",        // exchange
+					d.ReplyTo, // routing key
+					false,     // mandatory
+					false,     // immediate
+					amqp.Publishing{
+						ContentType:   "text/plain",
+						CorrelationId: d.CorrelationId,
+						Body:          append(content, []byte(" "+servername)...),
+					})
+			} else {
+				log.Println("Create")
+				err = fs.Create(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
+				failOnError(err, "Failed to create a file")
 
-			err = ch.Publish(
-				"",        // exchange
-				d.ReplyTo, // routing key
-				false,     // mandatory
-				false,     // immediate
-				amqp.Publishing{
-					ContentType:   "text/plain",
-					CorrelationId: d.CorrelationId,
-					Body:          []byte(servername + " " + f.Name() + " " + string(content)),
-				})
+				err = ch.Publish(
+					"",        // exchange
+					d.ReplyTo, // routing key
+					false,     // mandatory
+					false,     // immediate
+					amqp.Publishing{
+						ContentType:   "text/plain",
+						CorrelationId: d.CorrelationId,
+						Body:          []byte(servername),
+					})
+			}
+			log.Println("wait")
 		}
 		log.Printf("CLOSED CONN")
 		os.Exit(1)

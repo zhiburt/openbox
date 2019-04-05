@@ -42,14 +42,19 @@ func main() {
 	)
 	failOnError(err, "Failed to declare a queue")
 
+	var consumer = ""
+	if len(os.Args) > 4 {
+		consumer = os.Args[5]
+	}
+
 	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
+		q.Name,   // queue
+		consumer, // consumer
+		true,     // auto-ack
+		false,    // exclusive
+		false,    // no-local
+		false,    // no-wait
+		nil,      // args
 	)
 	failOnError(err, "Failed to register a consumer")
 
@@ -63,7 +68,7 @@ func main() {
 		amqp.Publishing{
 			ReplyTo:       q.Name,
 			CorrelationId: uuid.String(),
-			ContentType:   "text/plain",
+			ContentType:   "application/json",
 			Body:          body,
 		})
 	failOnError(err, "Failed to publish a message")
@@ -73,6 +78,7 @@ func main() {
 			log.Printf(" [x] Resp from server %s", d.Body)
 			break
 		}
+		log.Printf(" [x] from server but invalid %s", d.Body)
 	}
 
 	log.Printf(" [x] Sent %s", body)
@@ -82,20 +88,26 @@ func bodyFrom(args []string) []byte {
 	var name string
 	var user string
 	var body string
+	var a string
 	if (len(args) < 2) || os.Args[1] == "" {
 		name = "hello.clead"
 		user = "maxim"
 		body = "hello world"
+		a = "hello world"
 	} else {
 		name = args[2]
 		user = args[1]
 		body = args[3]
+		if len(args) > 5 {
+			a = args[4]
+		}
 	}
-	b, _ := json.Marshal(message(user, name, body))
+
+	b, _ := json.Marshal(message(user, name, body, a))
 	return b
 }
 
-func message(user, name, body string) communication.Message {
+func message(user, name, body, t string) communication.Message {
 	n := strings.Split(name, ".")
-	return communication.Message{user, []byte(body), n[0], n[1]}
+	return communication.Message{t, user, []byte(body), n[0], n[1]}
 }
