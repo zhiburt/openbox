@@ -1,15 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/openbox/worker/commands"
 	"github.com/openbox/worker/qservice"
 
 	"github.com/openbox/worker/communication"
@@ -53,25 +52,19 @@ func main() {
 
 			log.Printf("Received a message: %s\n", d.Body())
 
-			if m.Type != "" {
-				log.Println("look up")
-				f, err := fs.Lookup(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
-				if err != nil {
-					return d.Ack(false)
-				}
-				log.Println("Found")
-
-				content, _ := ioutil.ReadAll(f.Body())
-				log.Println("content", content)
-
-				d.Reply("text/plain", append(content, []byte(" "+servername)...))
-			} else {
-				log.Println("Create")
-				err = fs.Create(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
-				failOnError(err, "Failed to create a file")
-
-				d.Reply("text/plain", []byte(servername))
+			command, err := commands.NewCommand(fs, *m)
+			if err != nil {
+				log.Println("[error] with creating command", err)
+				return err
 			}
+
+			mss, err := command(fs, *m)
+			if err != nil {
+				log.Println("[error] with command", err)
+				return err
+			}
+
+			d.Reply("text/plain", mss)
 			return nil
 		}
 
