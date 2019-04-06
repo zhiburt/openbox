@@ -46,12 +46,12 @@ func main() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"task_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		"",    // name
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -61,6 +61,33 @@ func main() {
 		false, // global
 	)
 	failOnError(err, "Failed to set QoS")
+
+	err = ch.ExchangeDeclare(
+		"task_exchange", // name
+		"direct",        // type
+		true,            // durable
+		false,           // auto-deleted
+		false,           // internal
+		false,           // no-wait
+		nil,             // arguments
+	)
+	failOnError(err, "Failed to declare a exchange")
+
+	err = ch.QueueBind(
+		q.Name,          // queue name
+		"",              // routing key
+		"task_exchange", // exchange
+		false,
+		nil)
+	failOnError(err, "Failed to set QueueBind")
+
+	err = ch.QueueBind(
+		q.Name,          // queue name
+		servername,      // routing key
+		"task_exchange", // exchange
+		false,
+		nil)
+	failOnError(err, "Failed to set QueueBind")
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -92,18 +119,7 @@ func main() {
 				log.Println("look up")
 				f, err := fs.Lookup(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
 				if err != nil {
-					log.Println("didn't find", err)
-					err = ch.Publish(
-						"",     // exchange
-						q.Name, // routing key
-						false,  // mandatory
-						false,  // immediate
-						amqp.Publishing{
-							ContentType:   "application/json",
-							CorrelationId: d.CorrelationId,
-							Body:          d.Body,
-							ReplyTo:       d.ReplyTo,
-						})
+					d.Ack(false)
 					continue
 				}
 				log.Println("Found")

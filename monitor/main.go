@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -42,36 +43,59 @@ func main() {
 	)
 	failOnError(err, "Failed to declare a queue")
 
-	var consumer = ""
-	if len(os.Args) > 4 {
-		consumer = os.Args[5]
-	}
+	err = ch.ExchangeDeclare(
+		"task_exchange", // name
+		"direct",        // type
+		true,            // durable
+		false,           // auto-deleted
+		false,           // internal
+		false,           // no-wait
+		nil,             // arguments
+	)
+	failOnError(err, "Failed to register a exchange")
 
 	msgs, err := ch.Consume(
-		q.Name,   // queue
-		consumer, // consumer
-		true,     // auto-ack
-		false,    // exclusive
-		false,    // no-local
-		false,    // no-wait
-		nil,      // args
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
 	)
 	failOnError(err, "Failed to register a consumer")
 
 	uuid, _ := uuid.NewV4()
 	body := bodyFrom(os.Args)
-	err = ch.Publish(
-		"",           // exchange
-		"task_queue", // routing key
-		false,        // mandatory
-		false,
-		amqp.Publishing{
-			ReplyTo:       q.Name,
-			CorrelationId: uuid.String(),
-			ContentType:   "application/json",
-			Body:          body,
-		})
-	failOnError(err, "Failed to publish a message")
+
+	if len(os.Args) > 5 {
+		fmt.Println("LOOKING UP", os.Args[5])
+		err = ch.Publish(
+			"task_exchange", // exchange
+			os.Args[5],      // routing key
+			false,           // mandatory
+			false,
+			amqp.Publishing{
+				ReplyTo:       q.Name,
+				CorrelationId: uuid.String(),
+				ContentType:   "application/json",
+				Body:          body,
+			})
+		failOnError(err, "Failed to publish a message")
+	} else {
+		err = ch.Publish(
+			"task_exchange", // exchange
+			"",              // routing key
+			false,           // mandatory
+			false,
+			amqp.Publishing{
+				ReplyTo:       q.Name,
+				CorrelationId: uuid.String(),
+				ContentType:   "application/json",
+				Body:          body,
+			})
+		failOnError(err, "Failed to publish a message")
+	}
 
 	for d := range msgs {
 		if uuid.String() == d.CorrelationId {
