@@ -117,14 +117,12 @@ func bodyFrom(args []string) []byte {
 		name = "hello.clead"
 		user = "maxim"
 		body = "hello world"
-		a = "hello world"
+		a = "create"
 	} else {
 		name = args[2]
 		user = args[1]
 		body = args[3]
-		if len(args) > 5 {
-			a = args[4]
-		}
+		a = args[4]
 	}
 
 	b, _ := json.Marshal(message(user, name, body, a))
@@ -133,5 +131,7 @@ func bodyFrom(args []string) []byte {
 
 func message(user, name, body, t string) communication.Message {
 	n := strings.Split(name, ".")
-	return communication.Message{t, user, []byte(body), n[0], n[1]}
+	mss := communication.Message{t, user, []byte(body), n[0], n[1]}
+	fmt.Println(mss)
+	return mss
 }
