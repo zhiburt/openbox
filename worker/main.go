@@ -2,18 +2,19 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/openbox/worker/qservice"
 
 	"github.com/openbox/worker/communication"
 
 	"github.com/openbox/worker/filesystem"
-	"github.com/streadway/amqp"
 )
 
 func init() {
@@ -37,131 +38,49 @@ var (
 )
 
 func main() {
-	conn, err := amqp.Dial("amqp://guest:guest@" + net + ":5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		"",    // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	err = ch.Qos(
-		1,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-	failOnError(err, "Failed to set QoS")
-
-	err = ch.ExchangeDeclare(
-		"task_exchange", // name
-		"direct",        // type
-		true,            // durable
-		false,           // auto-deleted
-		false,           // internal
-		false,           // no-wait
-		nil,             // arguments
-	)
-	failOnError(err, "Failed to declare a exchange")
-
-	err = ch.QueueBind(
-		q.Name,          // queue name
-		"",              // routing key
-		"task_exchange", // exchange
-		false,
-		nil)
-	failOnError(err, "Failed to set QueueBind")
-
-	err = ch.QueueBind(
-		q.Name,          // queue name
-		servername,      // routing key
-		"task_exchange", // exchange
-		false,
-		nil)
-	failOnError(err, "Failed to set QueueBind")
-
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-	failOnError(err, "Failed to register a consumer")
-
 	forever := make(chan bool)
 
 	var fs = filesystem.NewFilesystem(root)
+	qs, err := qservice.NewQueueService("guest", "guest", net, "task_exchange", servername)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	go func() {
-		for d := range msgs {
+		var foo = func(d qservice.Delivery) error {
 			m := &communication.Message{}
-			json.Unmarshal(d.Body, m)
+			json.Unmarshal(d.Body(), m)
 
-			log.Printf("Received a message: %s", d.Body)
-			dot_count := bytes.Count(d.Body, []byte("."))
-			t := time.Duration(dot_count)
-			time.Sleep(t * time.Second)
-			log.Printf("Done")
+			log.Printf("Received a message: %s\n", d.Body())
 
 			if m.Type != "" {
 				log.Println("look up")
 				f, err := fs.Lookup(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
 				if err != nil {
-					d.Ack(false)
-					continue
+					return d.Ack(false)
 				}
 				log.Println("Found")
 
 				content, _ := ioutil.ReadAll(f.Body())
 				log.Println("content", content)
 
-				err = ch.Publish(
-					"",        // exchange
-					d.ReplyTo, // routing key
-					false,     // mandatory
-					false,     // immediate
-					amqp.Publishing{
-						ContentType:   "text/plain",
-						CorrelationId: d.CorrelationId,
-						Body:          append(content, []byte(" "+servername)...),
-					})
+				d.Reply("text/plain", append(content, []byte(" "+servername)...))
 			} else {
 				log.Println("Create")
 				err = fs.Create(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
 				failOnError(err, "Failed to create a file")
 
-				err = ch.Publish(
-					"",        // exchange
-					d.ReplyTo, // routing key
-					false,     // mandatory
-					false,     // immediate
-					amqp.Publishing{
-						ContentType:   "text/plain",
-						CorrelationId: d.CorrelationId,
-						Body:          []byte(servername),
-					})
+				d.Reply("text/plain", []byte(servername))
 			}
-			log.Println("wait")
+			return nil
 		}
-		log.Printf("CLOSED CONN")
-		os.Exit(1)
+
+		qs.Handle(context.Background(), foo)
 	}()
 
 	go func() {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 		<-c
 		forever <- true
 	}()
