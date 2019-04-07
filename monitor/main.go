@@ -1,15 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/gofrs/uuid"
+	"github.com/openbox/monitor/qservice"
+
 	"github.com/openbox/monitor/communication"
-	"github.com/streadway/amqp"
 )
 
 func failOnError(err error, msg string) {
@@ -25,87 +26,25 @@ func main() {
 		net = n
 	}
 
-	conn, err := amqp.Dial("amqp://guest:guest@" + net + ":5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		"",    // name
-		false, // durable
-		false, // delete when usused
-		true,  // exclusive
-		false, // noWait
-		nil,   // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	err = ch.ExchangeDeclare(
-		"task_exchange", // name
-		"direct",        // type
-		true,            // durable
-		false,           // auto-deleted
-		false,           // internal
-		false,           // no-wait
-		nil,             // arguments
-	)
-	failOnError(err, "Failed to register a exchange")
-
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-	failOnError(err, "Failed to register a consumer")
-
-	uuid, _ := uuid.NewV4()
 	body := bodyFrom(os.Args)
 
-	if len(os.Args) > 5 && os.Args[5] != "all" {
-		fmt.Println("LOOKING UP", os.Args[5])
-		err = ch.Publish(
-			"task_exchange", // exchange
-			os.Args[5],      // routing key
-			false,           // mandatory
-			false,
-			amqp.Publishing{
-				ReplyTo:       q.Name,
-				CorrelationId: uuid.String(),
-				ContentType:   "application/json",
-				Body:          body,
-			})
-		failOnError(err, "Failed to publish a message")
+	qs, err := qservice.NewQueueService("guest", "guest", net, "task_exchange")
+	if err != nil {
+		log.Println("[erorr] happend", err)
+		os.Exit(1)
+	}
+
+	if len(os.Args) > 5 {
+		body, err = qs.Send(context.Background(), body, os.Args[5])
 	} else {
-		err = ch.Publish(
-			"task_exchange", // exchange
-			"",              // routing key
-			false,           // mandatory
-			false,
-			amqp.Publishing{
-				ReplyTo:       q.Name,
-				CorrelationId: uuid.String(),
-				ContentType:   "application/json",
-				Body:          body,
-			})
-		failOnError(err, "Failed to publish a message")
+		body, err = qs.Send(context.Background(), body, "")
 	}
 
-	for d := range msgs {
-		if uuid.String() == d.CorrelationId {
-			log.Printf(" [x] Resp from server %s", d.Body)
-			break
-		}
-		log.Printf(" [x] from server but invalid %s", d.Body)
+	if err != nil {
+		log.Println("[erorr] happend", err)
+		os.Exit(1)
 	}
-
-	log.Printf(" [x] Sent %s", body)
+	log.Printf(" [x] responce from server %s", body)
 }
 
 func bodyFrom(args []string) []byte {
@@ -131,8 +70,4 @@ func message(user, name, body, t string) communication.Message {
 	mss.UserID = user
 	mss.Type = t
 	return mss
-}
-
-func pop(args []string) (string, []string) {
-	return args[0], args[1:]
 }

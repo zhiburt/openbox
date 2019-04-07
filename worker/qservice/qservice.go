@@ -10,10 +10,10 @@ import (
 )
 
 type (
-	job func(d Delivery) error
+	Job func(d Delivery) error
 
 	QueueService interface {
-		Handle(context.Context, job) error
+		Handle(context.Context, Job) error
 		Close() error
 	}
 )
@@ -115,7 +115,7 @@ func NewQueueService(login, password, network, exchange, servername string) (Que
 	return &queueService{conn, ch, q, q1}, nil
 }
 
-func (q *queueService) Handle(ctx context.Context, j job) error {
+func (q *queueService) Handle(ctx context.Context, j Job) error {
 	mmsgs, err := q.ch.Consume(
 		q.myq.Name, // queue
 		"",         // consumer

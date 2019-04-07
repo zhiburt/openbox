@@ -29,6 +29,10 @@
   branch = "master"
   name = "github.com/streadway/amqp"
 
+[[constraint]]
+  name = "go.uber.org/zap"
+  version = "1.9.1"
+
 [prune]
   go-tests = true
   unused-packages = true
