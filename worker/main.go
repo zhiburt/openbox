@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.uber.org/zap"
+
 	"github.com/openbox/worker/commands"
 	"github.com/openbox/worker/communication"
 	"github.com/openbox/worker/qservice"
@@ -44,9 +46,14 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	go func() {
+	loggr, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-		qs.Handle(context.Background(), handlefunction(fs))
+	logger := loggr.Sugar()
+	go func() {
+		qs.Handle(context.Background(), loggingmidlware(logger, handlefunction(fs)))
 	}()
 
 	go func() {
@@ -84,5 +91,21 @@ func handlefunction(fs filesystem.Filesystem) qservice.Job {
 		}
 
 		return d.Reply("text/plain", mss)
+	}
+}
+
+func loggingmidlware(logger *zap.SugaredLogger, q qservice.Job) qservice.Job {
+	return func(d qservice.Delivery) error {
+		defer logger.Sync()
+		logger.Infow("get message", "params", d.Body())
+
+		err := q(d)
+		if err == nil {
+			logger.Infow("success in", "params", d.Body())
+		} else {
+			logger.Infow("failed in", "params", d.Body())
+		}
+
+		return err
 	}
 }
