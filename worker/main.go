@@ -9,9 +9,8 @@ import (
 	"syscall"
 
 	"github.com/openbox/worker/commands"
-	"github.com/openbox/worker/qservice"
-
 	"github.com/openbox/worker/communication"
+	"github.com/openbox/worker/qservice"
 
 	"github.com/openbox/worker/filesystem"
 )
@@ -46,29 +45,8 @@ func main() {
 	}
 
 	go func() {
-		var foo = func(d qservice.Delivery) error {
-			m := &communication.Message{}
-			json.Unmarshal(d.Body(), m)
 
-			log.Printf("Received a message: %s\n", d.Body())
-
-			command, err := commands.NewCommand(fs, *m)
-			if err != nil {
-				log.Println("[error] with creating command", err)
-				return err
-			}
-
-			mss, err := command(fs, *m)
-			if err != nil {
-				log.Println("[error] with command", err)
-				return err
-			}
-
-			d.Reply("text/plain", mss)
-			return nil
-		}
-
-		qs.Handle(context.Background(), foo)
+		qs.Handle(context.Background(), handlefunction(fs))
 	}()
 
 	go func() {
@@ -82,8 +60,29 @@ func main() {
 	<-forever
 }
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
+func handlefunction(fs filesystem.Filesystem) qservice.Job {
+	return func(d qservice.Delivery) error {
+		m := &communication.Message{}
+		json.Unmarshal(d.Body(), m)
+
+		log.Printf("Received a message: %s\n", d.Body())
+
+		command, err := commands.NewCommand(fs, *m)
+		if err != nil {
+			log.Println("[error] with creating command", err)
+			return err
+		}
+
+		mss, err := command(fs, *m)
+		if err != nil {
+			log.Println("[error] with command", err)
+			return err
+		}
+
+		if mss == nil {
+			mss = []byte(servername)
+		}
+
+		return d.Reply("text/plain", mss)
 	}
 }
