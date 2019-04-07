@@ -18,6 +18,8 @@ func NewCommand(fs filesystem.Filesystem, mssg communication.Message) (command, 
 	m := map[string]command{
 		"lookup": lookupfileCommand,
 		"create": createfileCommand,
+		"remove": removeCommand,
+		"rename": renameCommand,
 	}
 
 	if foo, ok := m[mssg.Type]; ok {
@@ -41,6 +43,18 @@ func lookupfileCommand(fs filesystem.Filesystem, m communication.Message) ([]byt
 }
 
 func createfileCommand(fs filesystem.Filesystem, m communication.Message) ([]byte, error) {
-	log.Println("Create")
+	log.Println("create")
 	return nil, fs.Create(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
+}
+
+func removeCommand(fs filesystem.Filesystem, m communication.Message) ([]byte, error) {
+	log.Println("remove")
+	return nil, fs.Remove(filesystem.NewUser(m.UserID), filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)))
+}
+
+func renameCommand(fs filesystem.Filesystem, m communication.Message) ([]byte, error) {
+	log.Println("rename", m)
+	return nil, fs.Rename(filesystem.NewUser(m.UserID),
+		filesystem.NewFile(m.Name, m.Extension, bytes.NewReader(m.Body)),
+		filesystem.NewFile(m.NewName, m.NewExtension, bytes.NewReader(m.Body)))
 }
