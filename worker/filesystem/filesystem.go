@@ -13,7 +13,7 @@ type (
 	Filesystem interface {
 		Create(User, File) error
 		Remove(User, File) error
-		Rename(User, File) error
+		Rename(User, File, File) error
 		Lookup(User, File) (File, error)
 	}
 
@@ -44,12 +44,16 @@ func (fs *defaultFilesystem) Create(user User, file File) error {
 	return create(path, file)
 }
 
-func (fs *defaultFilesystem) Rename(user User, file File) error {
-	return nil
+func (fs *defaultFilesystem) Rename(user User, file, newfile File) error {
+	path, _ := fs.userfolder(user)
+
+	return rename(path, file, newfile)
 }
 
 func (fs *defaultFilesystem) Remove(user User, file File) error {
-	return nil
+	path, _ := fs.userfolder(user)
+
+	return remove(path, file)
 }
 
 func (fs *defaultFilesystem) Lookup(user User, file File) (File, error) {
@@ -65,6 +69,18 @@ func (fs defaultFilesystem) userfolder(user User) (string, error) {
 	log.Println("pathto", pathto)
 
 	return pathto, err
+}
+
+func rename(pathto string, f, f1 File) error {
+	oldpath := filepath.Join(pathto, f.Name()+"."+f.Extension())
+	newpath := filepath.Join(pathto, f1.Name()+"."+f1.Extension())
+	return os.Rename(oldpath, newpath)
+}
+
+func remove(pathto string, f File) error {
+	pathto = filepath.Join(pathto, f.Name()+"."+f.Extension())
+
+	return os.Remove(pathto)
 }
 
 func create(pathto string, f File) error {

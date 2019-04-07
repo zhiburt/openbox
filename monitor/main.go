@@ -68,7 +68,7 @@ func main() {
 	uuid, _ := uuid.NewV4()
 	body := bodyFrom(os.Args)
 
-	if len(os.Args) > 5 {
+	if len(os.Args) > 5 && os.Args[5] != "all" {
 		fmt.Println("LOOKING UP", os.Args[5])
 		err = ch.Publish(
 			"task_exchange", // exchange
@@ -109,29 +109,30 @@ func main() {
 }
 
 func bodyFrom(args []string) []byte {
-	var name string
-	var user string
-	var body string
-	var a string
-	if (len(args) < 2) || os.Args[1] == "" {
-		name = "hello.clead"
-		user = "maxim"
-		body = "hello world"
-		a = "create"
-	} else {
-		name = args[2]
-		user = args[1]
-		body = args[3]
-		a = args[4]
+	m := message(args[1], args[2], args[3], args[4])
+
+	if len(args) > 6 {
+		n := strings.Split(args[6], ".")
+		m.NewName = n[0]
+		m.NewExtension = n[1]
 	}
 
-	b, _ := json.Marshal(message(user, name, body, a))
+	fmt.Println(m)
+	b, _ := json.Marshal(m)
 	return b
 }
 
 func message(user, name, body, t string) communication.Message {
 	n := strings.Split(name, ".")
-	mss := communication.Message{t, user, []byte(body), n[0], n[1]}
-	fmt.Println(mss)
+	mss := communication.Message{}
+	mss.Name = n[0]
+	mss.Extension = n[1]
+	mss.Body = []byte(body)
+	mss.UserID = user
+	mss.Type = t
 	return mss
+}
+
+func pop(args []string) (string, []string) {
+	return args[0], args[1:]
 }
