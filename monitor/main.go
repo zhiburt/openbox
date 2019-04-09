@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -40,7 +41,7 @@ func main() {
 		logger = log.NewSyncLogger(logger)
 		logger = level.NewFilter(logger, level.AllowDebug())
 		logger = log.With(logger,
-			"service", "remote filesystem monitor",
+			"service", "monitor",
 			"ts", log.DefaultTimestampUTC,
 			"caller", log.DefaultCaller,
 		)
@@ -52,7 +53,16 @@ func main() {
 	var db *mongo.Client
 	{
 		var err error
-		db, err = mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+		url := "mongodb://mongo:27017"
+		level.Debug(logger).Log("url", url)
+
+		db, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(url))
+		if err != nil {
+			level.Error(logger).Log("exit", err)
+			os.Exit(-1)
+		}
+
+		err = db.Ping(context.TODO(), nil)
 		if err != nil {
 			level.Error(logger).Log("exit", err)
 			os.Exit(-1)
