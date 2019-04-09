@@ -2,9 +2,16 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/openbox/monitor/services/monitor"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -27,32 +34,46 @@ func NewRepository(client *mongo.Client, logger *log.Logger) monitor.Repository 
 }
 
 func (rep *MongoRepo) CreateFile(ctx context.Context, f monitor.File) (string, error) {
-	// if rep.files.FindOne(ctx, bson.D{{"user_id", f.OwnerID}}).Err() != nil {
-	// 	_, err := rep.files.InsertOne(ctx, bson.D{{"user_id", f.OwnerID}, {"file", monitor.File{
-	// 		OwnerID:   f.OwnerID,
-	// 		Name:      "/",
-	// 		Status:    "root",
-	// 		CreatedOn: time.Now().UnixNano(),
-	// 		IsFolder:  true,
-	// 		Files:     []monitor.File{f},
-	// 	}}})
-	// 	if err != nil {
-	// 		level.Error(*rep.logger).Log("err in first <IF>", err)
-	// 		return "", err
-	// 	}
-	// }
-	// if f.IsFolder && f.Files != nil {
-	// 	rep.files.UpdateOne(ctx, bson.D{{"name", f.Name}})
-	// }
+	id, _ := uuid.NewV4()
+	f.ID = id.String()
 
-	// res, err := rep.files.InsertOne(ctx, f)
-	// if err != nil {
-	// 	level.Error(*rep.logger).Log("err", err)
-	// 	return "", err
-	// }
-	// level.Info(*rep.logger).Log("msg", "created new file in repo")
-	// return res.InsertedID.(string), nil
-	return "", nil
+	var root monitor.File
+	level.Debug(*rep.logger).Log("get file", fmt.Sprint(f))
+	if err := rep.files.FindOne(ctx, bson.D{{Key: "ownerid", Value: f.OwnerID}}).Decode(&root); err != nil {
+		level.Error(*rep.logger).Log("error didn't find root", err)
+
+		_, err := rep.files.InsertOne(ctx, monitor.File{
+			OwnerID:   f.OwnerID,
+			Name:      "/",
+			Status:    "root",
+			CreatedOn: time.Now().UnixNano(),
+			IsFolder:  true,
+			Files:     []monitor.File{f},
+		})
+		if err != nil {
+			level.Error(*rep.logger).Log("err in first <IF>", err)
+			return "", err
+		}
+
+		return f.ID, err
+	}
+	d, _ := json.MarshalIndent(root, " ", "")
+	level.Debug(*rep.logger).Log("found root", fmt.Sprint(string(d)))
+
+	updatedfile, err := insertInto(root, f)
+	if err != nil {
+		level.Error(*rep.logger).Log("err cannot find place for file, structure your file cantains erorr ", err)
+		return "", err
+	}
+
+	_, err = rep.files.ReplaceOne(ctx, bson.D{{Key: "ownerid", Value: f.OwnerID}}, updatedfile)
+	if err != nil {
+		level.Error(*rep.logger).Log("err", err)
+		return "", err
+	}
+
+	level.Info(*rep.logger).Log("msg", "created new file in repo")
+	return f.ID, nil
 }
 
 func (*MongoRepo) GetFileByID(ctx context.Context, id string) (monitor.File, error) {
@@ -73,4 +94,25 @@ func (*MongoRepo) ChangeFileBody(ctx context.Context, id string, b []byte) error
 
 func (*MongoRepo) RemoveFileByID(ctx context.Context, id string) error {
 	return nil
+}
+
+func insertInto(root monitor.File, insertedFile monitor.File) (monitor.File, error) {
+	r := &root
+	err := insertInPlace(&root, &insertedFile)
+	return *r, err
+}
+
+func insertInPlace(root, insertedFile *monitor.File) error {
+	if insertedFile.IsFolder == false || insertedFile.Files == nil {
+		root.Files = append(root.Files, *insertedFile)
+		return nil
+	}
+
+	for i := 0; i < len(root.Files); i++ {
+		if root.Files[i].Name == insertedFile.Name && root.Files[i].IsFolder {
+			return insertInPlace(&root.Files[i], &insertedFile.Files[0])
+		}
+	}
+
+	return fmt.Errorf("canno't find such directory")
 }
