@@ -26,8 +26,24 @@
 
 
 [[constraint]]
+  name = "github.com/go-kit/kit"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/gofrs/uuid"
+  version = "3.2.0"
+
+[[constraint]]
+  name = "github.com/gorilla/mux"
+  version = "1.7.1"
+
+[[constraint]]
   branch = "master"
   name = "github.com/streadway/amqp"
+
+[[constraint]]
+  name = "go.mongodb.org/mongo-driver"
+  version = "1.0.0"
 
 [prune]
   go-tests = true
