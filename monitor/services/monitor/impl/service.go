@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/openbox/monitor/services/monitor"
-	"github.com/openbox/monitor/services/qservice"
-	comm "github.com/openbox/monitor/services/qservice/communication"
+	"github.com/openbox/monitor/services/qcommunicator"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -19,38 +18,33 @@ import (
 type service struct {
 	repository mntr.Repository
 	logger     log.Logger
-	queue      qservice.QueueService
+	qfs        qcommunicator.QFileSystem
 }
 
 // NewService creates and returns a new Order service instance
-func NewService(rep mntr.Repository, logger log.Logger, qs qservice.QueueService) mntr.Service {
+func NewService(rep mntr.Repository, logger log.Logger, qfs qcommunicator.QFileSystem) mntr.Service {
 	return &service{
 		repository: rep,
 		logger:     logger,
-		queue:      qs,
+		qfs:        qfs,
 	}
 }
 
 // Create makes an order
 func (s *service) Create(ctx context.Context, file mntr.File) (string, error) {
 	logger := log.With(s.logger, "method", "Create")
-
 	level.Debug(logger).Log("file", fmt.Sprint(file))
 
-	mss, err := comm.Marshal(comm.NewMessage(comm.CREATE, file.OwnerID, file.Name, file.Body))
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return "", mntr.ErrInvalidParams
-	}
+	if f, ok := getFile(&file); ok {
+		mss, err := s.qfs.PushFile(ctx, f.OwnerID, f.Name, f.Body)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			return "", mntr.ErrInvalidParams
+		}
 
-	mss, err = s.queue.Send(ctx, mss, "")
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return "", mntr.ErrCommunication
+		level.Info(logger).Log("responce from queue service ", mss)
+		f.ServerID = mss
 	}
-
-	level.Info(logger).Log("responce from queue service ", string(mss))
-	file.ServerID = string(mss)
 
 	file.Status = "just_created"
 	file.CreatedOn = time.Now().Unix()
@@ -87,7 +81,7 @@ func (s *service) GetByOwner(ctx context.Context, owner string) ([]mntr.File, er
 		return files, mntr.ErrRepository
 	}
 
-	err = getBodies(s.queue, files...)
+	err = getBodies(s.qfs, files...)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return files, mntr.ErrRepository
@@ -129,7 +123,7 @@ func (s *service) RemoveByID(ctx context.Context, id string) error {
 	return nil
 }
 
-func getBodies(qs qservice.QueueService, f ...monitor.File) error {
+func getBodies(qs qcommunicator.QFileSystem, f ...monitor.File) error {
 	for i := 0; i < len(f); i++ {
 		if err := getBody(qs, &f[i]); err != nil {
 			return err
@@ -139,29 +133,42 @@ func getBodies(qs qservice.QueueService, f ...monitor.File) error {
 	return nil
 }
 
-func getBody(qs qservice.QueueService, f *monitor.File) error {
+func getBody(qfs qcommunicator.QFileSystem, f *monitor.File) error {
 	if f.IsFolder {
 		if f.Files != nil {
 			for i := 0; i < len(f.Files); i++ {
-				getBody(qs, &f.Files[i])
+				fmt.Println("---- RECURSIVE", f)
+				getBody(qfs, &f.Files[i])
 			}
 		}
 
 		return nil
 	}
 
-	mss, err := comm.Marshal(comm.NewMessage(comm.LOOKUP, f.OwnerID, f.Name, nil))
-	if err != nil {
-		return fmt.Errorf("cannot marshal message %v file %v", err, f)
+	if f.ServerID == "" {
+		fmt.Println("SOMETHING WRONG", f)
+		return nil
 	}
 
-	mss, err = qs.Send(context.Background(), mss, f.ServerID)
+	b, err := qfs.GetFileBody(context.TODO(), f.OwnerID, f.Name, f.ServerID)
 	if err != nil {
-		return fmt.Errorf("cannot send message %v file %v", err, f)
+		return err
 	}
 
-	fmt.Println("---- GETTING BODY", mss)
-	f.Body = mss
+	fmt.Println("---- GETTING BODY", b)
+	f.Body = b
 
 	return nil
+}
+
+func getFile(f *monitor.File) (*monitor.File, bool) {
+	if f.IsFolder {
+		if f.Files == nil {
+			return nil, false
+		}
+
+		return getFile(&f.Files[0])
+	}
+
+	return f, true
 }
