@@ -37,6 +37,8 @@ func (rep *MongoRepo) CreateFile(ctx context.Context, f monitor.File) (string, e
 	id, _ := uuid.NewV4()
 	f.ID = id.String()
 
+	cleanBody(&f)
+
 	var root monitor.File
 	level.Debug(*rep.logger).Log("get file", fmt.Sprint(f))
 	if err := rep.files.FindOne(ctx, bson.D{{Key: "ownerid", Value: f.OwnerID}}).Decode(&root); err != nil {
@@ -80,8 +82,14 @@ func (*MongoRepo) GetFileByID(ctx context.Context, id string) (monitor.File, err
 	return monitor.File{}, nil
 }
 
-func (*MongoRepo) GetFilesByOwner(ctx context.Context, id string) ([]monitor.File, error) {
-	return nil, nil
+func (rep *MongoRepo) GetFilesByOwner(ctx context.Context, id string) ([]monitor.File, error) {
+	var root monitor.File
+	if err := rep.files.FindOne(ctx, bson.D{{Key: "ownerid", Value: id}}).Decode(&root); err != nil {
+		level.Error(*rep.logger).Log("error didn't find users files", err, "user", id)
+		return nil, err
+	}
+
+	return root.Files, nil
 }
 
 func (*MongoRepo) ChangeFileName(ctx context.Context, id, newname string) error {
@@ -115,4 +123,15 @@ func insertInPlace(root, insertedFile *monitor.File) error {
 	}
 
 	return fmt.Errorf("canno't find such directory")
+}
+
+func cleanBody(f *monitor.File) {
+	if f == nil {
+		return
+	}
+
+	f.Body = nil
+	for i := 0; i < len(f.Files); i++ {
+		cleanBody(&f.Files[i])
+	}
 }
