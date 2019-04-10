@@ -2,8 +2,10 @@ package impl
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/openbox/monitor/services/monitor"
 	"github.com/openbox/monitor/services/qservice"
 	comm "github.com/openbox/monitor/services/qservice/communication"
 
@@ -33,17 +35,9 @@ func NewService(rep mntr.Repository, logger log.Logger, qs qservice.QueueService
 func (s *service) Create(ctx context.Context, file mntr.File) (string, error) {
 	logger := log.With(s.logger, "method", "Create")
 
-	file.Status = "just_created"
-	file.CreatedOn = time.Now().Unix()
+	level.Debug(logger).Log("file", fmt.Sprint(file))
 
-	id, err := s.repository.CreateFile(ctx, file)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return "", mntr.ErrRepository
-	}
-	level.Info(logger).Log("created file with ID", id)
-
-	mss, err := comm.Marshal(comm.NewMessage(comm.CREATE, id, file.Name, file.Body))
+	mss, err := comm.Marshal(comm.NewMessage(comm.CREATE, file.OwnerID, file.Name, file.Body))
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return "", mntr.ErrInvalidParams
@@ -54,7 +48,19 @@ func (s *service) Create(ctx context.Context, file mntr.File) (string, error) {
 		level.Error(logger).Log("err", err)
 		return "", mntr.ErrCommunication
 	}
-	level.Info(logger).Log("responce from queue service ", mss)
+
+	level.Info(logger).Log("responce from queue service ", string(mss))
+	file.ServerID = string(mss)
+
+	file.Status = "just_created"
+	file.CreatedOn = time.Now().Unix()
+
+	id, err := s.repository.CreateFile(ctx, file)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return "", mntr.ErrRepository
+	}
+	level.Info(logger).Log("created file with ID", id)
 
 	return id, nil
 }
@@ -66,8 +72,9 @@ func (s *service) GetByID(ctx context.Context, id, userid string) (mntr.File, er
 	file, err := s.repository.GetFileByID(ctx, id)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		return file, mntr.ErrRepository
+		return file, mntr.ErrCommunication
 	}
+
 	return file, nil
 }
 
@@ -79,6 +86,13 @@ func (s *service) GetByOwner(ctx context.Context, owner string) ([]mntr.File, er
 		level.Error(logger).Log("err", err)
 		return files, mntr.ErrRepository
 	}
+
+	err = getBodies(s.queue, files...)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return files, mntr.ErrRepository
+	}
+
 	return files, nil
 }
 
@@ -112,5 +126,42 @@ func (s *service) RemoveByID(ctx context.Context, id string) error {
 		level.Error(logger).Log("err", err)
 		return mntr.ErrRepository
 	}
+	return nil
+}
+
+func getBodies(qs qservice.QueueService, f ...monitor.File) error {
+	for i := 0; i < len(f); i++ {
+		if err := getBody(qs, &f[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getBody(qs qservice.QueueService, f *monitor.File) error {
+	if f.IsFolder {
+		if f.Files != nil {
+			for i := 0; i < len(f.Files); i++ {
+				getBody(qs, &f.Files[i])
+			}
+		}
+
+		return nil
+	}
+
+	mss, err := comm.Marshal(comm.NewMessage(comm.LOOKUP, f.OwnerID, f.Name, nil))
+	if err != nil {
+		return fmt.Errorf("cannot marshal message %v file %v", err, f)
+	}
+
+	mss, err = qs.Send(context.Background(), mss, f.ServerID)
+	if err != nil {
+		return fmt.Errorf("cannot send message %v file %v", err, f)
+	}
+
+	fmt.Println("---- GETTING BODY", mss)
+	f.Body = mss
+
 	return nil
 }
