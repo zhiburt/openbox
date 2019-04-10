@@ -32,6 +32,13 @@ func NewService(points endpoints.Endpoints, logger log.Logger) http.Handler {
 		options...,
 	))
 
+	r.Methods("GET").Path("/files/owner/{id}").Handler(kithttp.NewServer(
+		points.GetByOwner,
+		decodeGetByUserIDRequest,
+		encodeResponse,
+		options...,
+	))
+
 	return r
 }
 
@@ -40,6 +47,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (request interface{
 	if e := json.NewDecoder(r.Body).Decode(&req.File); e != nil {
 		return nil, e
 	}
+
 	return req, nil
 }
 
@@ -50,6 +58,15 @@ func decodeGetByIDRequest(_ context.Context, r *http.Request) (request interface
 		return nil, fmt.Errorf("cannot find ID in your request, please read documentation before")
 	}
 	return endpoints.GetByIDRequest{ID: id}, nil
+}
+
+func decodeGetByUserIDRequest(_ context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
+		return nil, fmt.Errorf("cannot find ID in your request, please read documentation before")
+	}
+	return endpoints.GetByUserIDRequest{ID: id}, nil
 }
 
 func decodeChangeNameRequest(_ context.Context, r *http.Request) (request interface{}, err error) {
