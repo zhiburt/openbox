@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/openbox/monitor/services/qcommunicator"
+
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -79,11 +81,12 @@ func main() {
 		}
 	}
 
-	// Create Order Service
+	var qfs qcommunicator.QFileSystem = qcommunicator.NewQFileSystem(logger, qs)
+
 	var mservice monitor.Service
 	{
 		repository := repositories.NewRepository(db, &logger)
-		mservice = impl.NewService(repository, logger, qs)
+		mservice = impl.NewService(repository, logger, qfs)
 	}
 
 	var h http.Handler
