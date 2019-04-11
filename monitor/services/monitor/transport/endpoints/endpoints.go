@@ -2,10 +2,13 @@ package endpoints
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/openbox/monitor/services/monitor"
 )
+
+var ErrRequest = errors.New("request error, try to check params")
 
 // Endpoints holds all Go kit endpoints for the Order service.
 type Endpoints struct {
@@ -32,6 +35,10 @@ func MakeEndpoints(s monitor.Service) Endpoints {
 func makeCreateEndpoint(s monitor.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(CreateRequest)
+		if req.File.Name == "" || req.File.OwnerID == "" {
+			return nil, ErrRequest
+		}
+
 		id, err := s.Create(ctx, req.File)
 		return CreateResponse{ID: id, Err: err}, nil
 	}
