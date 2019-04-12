@@ -1,0 +1,35 @@
+sudo: true
+
+service:
+  - docker
+
+language: go
+
+go:
+  - 1.11.x
+
+install: true
+
+notifications:
+  email: false
+
+
+jobs:
+  include:
+    - stage: checks
+        install:
+          - go get -u golang.org/x/lint/golint
+          - go get github.com/golangci/golangci-lint/cmd/golangci-lint
+          - go install github.com/golangci/golangci-lint/cmd/golangci-lint
+        script:
+          - gofmt -d $(find . -type f -name '*.go' -not -path "./vendor/*")
+          - go list ./... | grep -v /vendor/ | xargs -n 1 golint
+          - golangci-lint run ./...
+    - stage: tests
+        script: go test -v -race --coverprofile=coverage.out --covermode=atomic ./...
+        after_success:
+          - bash <(curl -s https://codecov.io/bash)
+
+stages:
+  - checks
+  - tests
