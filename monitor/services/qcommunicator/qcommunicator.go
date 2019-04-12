@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/zhiburt/openbox/openbox/monitor/services/qservice"
+	"github.com/zhiburt/openbox/monitor/services/qservice"
 )
 
 type QFileSystem interface {
