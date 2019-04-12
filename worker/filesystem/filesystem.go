@@ -1,12 +1,12 @@
 package filesystem
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type (
@@ -65,30 +65,36 @@ func (fs *defaultFilesystem) Lookup(user User, file File) (File, error) {
 func (fs defaultFilesystem) userfolder(user User) (string, error) {
 	userfold := folderNameForUser(user)
 	pathto := filepath.Join(fs.rootpath, userfold)
-	err := os.Mkdir(pathto, os.ModeDir)
+	err := os.Mkdir(pathto, os.ModePerm)
 	log.Println("pathto", pathto)
-
 	return pathto, err
 }
 
-func rename(pathto string, f, f1 File) error {
-	oldpath := filepath.Join(pathto, f.Name()+"."+f.Extension())
-	newpath := filepath.Join(pathto, f1.Name()+"."+f1.Extension())
+func rename(pt string, f, f1 File) error {
+	oldpath := pathto(pt, f.Name(), f.Extension())
+	newpath := pathto(pt, f1.Name(), f1.Extension())
+
 	return os.Rename(oldpath, newpath)
 }
 
-func remove(pathto string, f File) error {
-	pathto = filepath.Join(pathto, f.Name()+"."+f.Extension())
+func remove(pt string, f File) error {
+	pt = pathto(pt, f.Name(), f.Extension())
 
-	return os.Remove(pathto)
+	return os.Remove(pt)
 }
 
-func create(pathto string, f File) error {
-	pathto = filepath.Join(pathto, f.Name()+"."+f.Extension())
-	file, err := os.Create(pathto)
+func create(pt string, f File) error {
+	pt = pathto(pt, f.Name(), f.Extension())
+	fmt.Println("pathto", pt)
+
+	file, err := os.Create(pt)
 	if err != nil {
 		return err
 	}
+	if f.Body() == nil {
+		return nil
+	}
+
 	defer file.Close()
 
 	reader := io.TeeReader(f.Body(), file)
@@ -96,12 +102,20 @@ func create(pathto string, f File) error {
 	return err
 }
 
-func lookup(pathto string, f File) (File, error) {
-	pathto = filepath.Join(pathto, f.Name()+"."+f.Extension())
-	file, err := os.Open(pathto)
+func lookup(pt string, f File) (File, error) {
+	pt = pathto(pt, f.Name(), f.Extension())
+	file, err := os.Open(pt)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewFile(file.Name(), strings.TrimRight(file.Name(), "."), file), nil
+	return NewFile(f.Name(), f.Extension(), file), nil
+}
+
+func pathto(p, name, extension string) string {
+	if extension != "" {
+		name += "." + extension
+	}
+
+	return filepath.Join(p, name)
 }

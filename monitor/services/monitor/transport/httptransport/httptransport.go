@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -82,16 +83,32 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 		errEncoder(ctx, e, w)
 		return nil
 	}
+	if err := getError(response); err != nil {
+		errEncoder(ctx, err, w)
+		return nil
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	return json.NewEncoder(w).Encode(response)
 }
 
 func errEncoder(ctx context.Context, err error, w http.ResponseWriter) {
-	body, _ := json.Marshal(struct {
-		err error
-	}{err: err})
-
 	w.WriteHeader(http.StatusBadRequest)
-	w.Write(body)
+	json.NewEncoder(w).Encode(struct {
+		Error string `json:"error"`
+	}{
+		Error: err.Error(),
+	})
+}
+
+func getError(response interface{}) error {
+	if _, ok := reflect.TypeOf(response).FieldByName("Err"); ok {
+		r := reflect.ValueOf(response).FieldByName("Err")
+		if err, ok := r.Interface().(error); ok {
+			fmt.Println(err)
+			return err
+		}
+	}
+
+	return nil
 }

@@ -84,7 +84,7 @@ func (s *service) GetByOwner(ctx context.Context, owner string) ([]mntr.File, er
 	err = getBodies(s.qfs, files...)
 	if err != nil {
 		level.Error(logger).Log("err", err)
-		return files, mntr.ErrRepository
+		return files, mntr.ErrCommunication
 	}
 
 	return files, nil
