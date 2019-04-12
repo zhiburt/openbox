@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openbox/monitor/services/monitor"
-	"github.com/openbox/monitor/services/qcommunicator"
+	"github.com/zhiburt/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/openbox/monitor/services/qcommunicator"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	mntr "github.com/openbox/monitor/services/monitor"
+	mntr "github.com/zhiburt/openbox/openbox/monitor/services/monitor"
 )
 
 // service implements the Order Service

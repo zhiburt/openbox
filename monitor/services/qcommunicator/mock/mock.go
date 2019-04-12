@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	"github.com/openbox/monitor/services/qcommunicator"
+	"github.com/zhiburt/openbox/monitor/services/qcommunicator"
 )
 
 type qcommunicatorMock struct {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/monitor/services/monitor"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

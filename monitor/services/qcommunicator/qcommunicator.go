@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	comm "github.com/openbox/monitor/services/qcommunicator/communication"
+	comm "github.com/zhiburt/openbox/monitor/services/qcommunicator/communication"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/openbox/monitor/services/qservice"
+	"github.com/zhiburt/openbox/openbox/monitor/services/qservice"
 )
 
 type QFileSystem interface {

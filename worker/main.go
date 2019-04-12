@@ -10,11 +10,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/openbox/worker/commands"
-	"github.com/openbox/worker/communication"
-	"github.com/openbox/worker/qservice"
+	"github.com/zhiburt/openbox/worker/commands"
+	"github.com/zhiburt/openbox/openbox/worker/communication"
+	"github.com/zhiburt/openbox/openbox/worker/qservice"
 
-	"github.com/openbox/worker/filesystem"
+	"github.com/zhiburt/openbox/openbox/worker/filesystem"
 )
 
 func init() {

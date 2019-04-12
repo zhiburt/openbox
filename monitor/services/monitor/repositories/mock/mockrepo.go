@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	"github.com/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/monitor/services/monitor"
 )
 
 // "go.mongodb.org/mongo-driver/mongo"

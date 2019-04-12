@@ -10,7 +10,7 @@ import (
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
-	"github.com/openbox/monitor/services/monitor/transport/endpoints"
+	"github.com/zhiburt/openbox/monitor/services/monitor/transport/endpoints"
 )
 
 func NewService(points endpoints.Endpoints, logger log.Logger) http.Handler {

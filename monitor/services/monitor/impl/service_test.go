@@ -6,14 +6,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openbox/monitor/services/qcommunicator"
+	"github.com/zhiburt/openbox/monitor/services/qcommunicator"
 
-	"github.com/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/openbox/monitor/services/monitor"
 
-	"github.com/openbox/monitor/services/monitor/repositories/mock"
+	"github.com/zhiburt/openbox/openbox/monitor/services/monitor/repositories/mock"
 
 	"github.com/go-kit/kit/log"
-	qmock "github.com/openbox/monitor/services/qcommunicator/mock"
+	qmock "github.com/zhiburt/openbox/openbox/monitor/services/qcommunicator/mock"
 )
 
 func TestCreate(t *testing.T) {

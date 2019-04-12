@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/go-kit/kit/endpoint"
-	"github.com/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/monitor/services/monitor"
 )
 
 var ErrRequest = errors.New("request error, try to check params")

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/openbox/monitor/services/qcommunicator"
+	"github.com/zhiburt/openbox/monitor/services/qcommunicator"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -16,12 +16,12 @@ import (
 
 	log "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/openbox/monitor/services/monitor"
-	"github.com/openbox/monitor/services/monitor/impl"
-	"github.com/openbox/monitor/services/monitor/repositories"
-	"github.com/openbox/monitor/services/monitor/transport/endpoints"
-	"github.com/openbox/monitor/services/monitor/transport/httptransport"
-	"github.com/openbox/monitor/services/qservice"
+	"github.com/zhiburt/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/monitor/services/monitor/impl"
+	"github.com/zhiburt/openbox/monitor/services/monitor/repositories"
+	"github.com/zhiburt/openbox/monitor/services/monitor/transport/endpoints"
+	"github.com/zhiburt/openbox/monitor/services/monitor/transport/httptransport"
+	"github.com/zhiburt/openbox/monitor/services/qservice"
 )
 
 var net = "localhost"

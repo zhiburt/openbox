@@ -1,7 +1,7 @@
 FROM golang:alpine
 
-ADD . /go/src/github.com/openbox/worker
-WORKDIR /go/src/github.com/openbox/worker   
+ADD . /go/src/github.com/zhiburt/openbox/worker
+WORKDIR /go/src/github.com/zhiburt/openbox/openbox/worker   
 
 ENV PORT=3001
 

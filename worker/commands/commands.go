@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/openbox/worker/communication"
-	"github.com/openbox/worker/filesystem"
+	"github.com/zhiburt/openbox/worker/communication"
+	"github.com/zhiburt/openbox/worker/filesystem"
 )
 
 type command func(filesystem.Filesystem, communication.Message) ([]byte, error)

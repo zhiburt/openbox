@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/go-kit/kit/log"
-	"github.com/openbox/monitor/services/monitor"
-	"github.com/openbox/monitor/services/monitor/impl"
-	"github.com/openbox/monitor/services/monitor/repositories/mock"
-	"github.com/openbox/monitor/services/monitor/transport/endpoints"
-	"github.com/openbox/monitor/services/qcommunicator"
-	qmock "github.com/openbox/monitor/services/qcommunicator/mock"
+	"github.com/zhiburt/openbox/monitor/services/monitor"
+	"github.com/zhiburt/openbox/openbox/monitor/services/monitor/impl"
+	"github.com/zhiburt/openbox/openbox/monitor/services/monitor/repositories/mock"
+	"github.com/zhiburt/openbox/openbox/monitor/services/monitor/transport/endpoints"
+	"github.com/zhiburt/openbox/openbox/monitor/services/qcommunicator"
+	qmock "github.com/zhiburt/openbox/openbox/monitor/services/qcommunicator/mock"
 )
 
 func TestNewServiceFiles(t *testing.T) {

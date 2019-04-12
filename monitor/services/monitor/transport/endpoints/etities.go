@@ -1,6 +1,6 @@
 package endpoints
 
-import "github.com/openbox/monitor/services/monitor"
+import "github.com/zhiburt/openbox/monitor/services/monitor"
 
 // CreateRequest holds the request parameters for the Create method.
 type CreateRequest struct {
