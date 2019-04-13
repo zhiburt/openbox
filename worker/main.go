@@ -10,11 +10,11 @@ import (
 
 	"go.uber.org/zap"
 
+	consul "github.com/hashicorp/consul/api"
 	"github.com/zhiburt/openbox/worker/commands"
 	"github.com/zhiburt/openbox/worker/communication"
-	"github.com/zhiburt/openbox/worker/qservice"
-
 	"github.com/zhiburt/openbox/worker/filesystem"
+	"github.com/zhiburt/openbox/worker/qservice"
 )
 
 func init() {
@@ -28,17 +28,45 @@ func init() {
 	if n := os.Getenv("ROOT"); n != "" {
 		root = n
 	}
-
+	if n := os.Getenv("CONSUL_ADDR"); n != "" {
+		consulAdress = n
+	}
 }
 
 var (
-	net        = "localhost"
-	servername = "rabbitmqworker"
-	root       = "."
+	net          = "localhost"
+	consulAdress = "localhost:8500"
+	servername   = "rabbitmqworker"
+	root         = "."
 )
 
 func main() {
 	forever := make(chan bool)
+
+	config := consul.DefaultConfig()
+	config.Address = consulAdress
+
+	c, err := consul.NewClient(config)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	agent := c.Agent()
+
+	err = agent.ServiceRegister(&consul.AgentServiceRegistration{
+		ID:   servername,
+		Name: "worker-pool",
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer func() {
+		err := c.Agent().ServiceDeregister(servername)
+		if err != nil {
+			log.Println("cannot deregister service")
+			return
+		}
+		log.Println("deregistered service")
+	}()
 
 	var fs = filesystem.NewFilesystem(root)
 	qs, err := qservice.NewQueueService("guest", "guest", net, "task_exchange", servername)
