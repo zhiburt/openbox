@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import time
+import socket
 import requests
 import json
 from os.path import dirname, abspath
@@ -32,10 +33,11 @@ def stop_services():
     return proc.returncode
 
 def curl(jsn, owner):
-    url = "http://localhost:8082/files"
+    host_name = socket.gethostname() 
+    url = "http://"+ host_name + ":8082/files"
 
     if jsn == None:
-        url = "http://localhost:8082/files/owner/"+owner
+        url = "http://" + host_name + ":8082/files/owner/"+owner
         a = requests.get(url)
         return a.json()
 
