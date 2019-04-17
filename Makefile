@@ -39,6 +39,7 @@ pull_services:
 	docker pull rabbitmq:latest
 	docker pull mongo:latest
 	docker pull consul:latest
+	docker network create test-rabbit-network 
 
 stop_services:
 	docker stop $(RABBIT) && docker stop $(MONGO) && docker stop $(CONSUL) 
