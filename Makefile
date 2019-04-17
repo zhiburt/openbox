@@ -35,5 +35,10 @@ start_services:
 		consul:latest agent -dev -ui -client=0.0.0.0
 	docker ps
 
+pull_services:
+	docker pull rabbitmq:latest
+	docker pull mongo:latest
+	docker pull consul:latest
+
 stop_services:
 	docker stop $(RABBIT) && docker stop $(MONGO) && docker stop $(CONSUL) 
