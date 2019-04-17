@@ -30,6 +30,10 @@ jobs:
     after_success:
      - bash <(curl -s https://codecov.io/bash)
   - stage: integration
+    install:
+      make pull_services    
+      make build_monitor    
+      make build_worker
     script:
      - python integration/monitor_worker/test.py
 
