@@ -29,7 +29,11 @@ jobs:
      - go test -v -race --coverprofile=coverage.out --covermode=atomic ./...
     after_success:
      - bash <(curl -s https://codecov.io/bash)
+  - stage: integration
+    script:
+     - python integration/monitor_worker/test.py
 
 stages:
   - checks
   - tests
+  - integration
