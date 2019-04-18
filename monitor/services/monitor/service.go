@@ -15,17 +15,29 @@ type Service interface {
 	RemoveByID(ctx context.Context, id string) error
 }
 
+type RawData []byte
+
+func (r RawData) MarshalText() (text []byte, err error) {
+	return r[:], nil
+}
+
+func (r *RawData) UnmarshalText(text []byte) error {
+	*r = text[:]
+
+	return nil
+}
+
 // File represents an file
 type File struct {
-	ID        string `json:"id,omitempty"`
-	OwnerID   string `json:"owner_id"`
-	ServerID  string `json:"server_id"`
-	Name      string `json:"name"`
-	Body      []byte `json:"body,omitempty"`
-	Status    string `json:"status"`
-	CreatedOn int64  `json:"created_on,omitempty"`
-	IsFolder  bool   `json:"is_folder,omitempty"`
-	Files     []File `json:"files,omitempty"`
+	ID        string  `json:"id,omitempty"`
+	OwnerID   string  `json:"owner_id"`
+	ServerID  string  `json:"server_id"`
+	Name      string  `json:"name"`
+	Body      RawData `json:"body,omitempty"`
+	Status    string  `json:"status"`
+	CreatedOn int64   `json:"created_on,omitempty"`
+	IsFolder  bool    `json:"is_folder,omitempty"`
+	Files     []File  `json:"files,omitempty"`
 }
 
 /*
