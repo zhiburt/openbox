@@ -17,7 +17,7 @@ def start_monitor():
 def start_worker(workername):
     proc = subprocess.Popen(["make","NAME="+workername, "start_worker"], cwd=projectDir(), stdout=sys.stdout)
     
-    return proc
+    return proc 
 
 
 def start_services():
@@ -53,9 +53,11 @@ if __name__ == "__main__":
     
     try:
         start_services()
+        time.sleep(10)
         monitor = start_monitor()
+        time.sleep(10)
         worker = start_worker("worker_21332")
-        time.sleep(20)
+        time.sleep(10)
         
         for indx, case in enumerate(cases):
             print("ITERATION")
