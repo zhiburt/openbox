@@ -47,7 +47,7 @@ def curl(jsn, owner):
 
 if __name__ == "__main__":
     cases = [
-        {"json": {"name":"m","owner_id":"m"}, "is_create": True, "expected": {'error': 'try to figure out why'}},
+        {"json": {"name":"m","owner_id":"m"}, "is_create": True, "expected": "id"},
         {"json": {}, "is_create": True, "expected": {'error': 'request error, try to check params'}},
     ]
     
