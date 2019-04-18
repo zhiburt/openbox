@@ -10,12 +10,12 @@ def projectDir():
     return dirname(dirname(dirname(abspath(__file__))))
 
 def start_monitor():
-    proc = subprocess.Popen(["make", "start_monitor"], cwd=projectDir(), stdout=sys.stdout)
+    proc = subprocess.Popen(["make", "start_monitor"], cwd=projectDir(), stdout=subprocess.PIPE)
 
     return proc
 
 def start_worker(workername):
-    proc = subprocess.Popen(["make","NAME="+workername, "start_worker"], cwd=projectDir(), stdout=sys.stdout)
+    proc = subprocess.Popen(["make","NAME="+workername, "start_worker"], cwd=projectDir(), stdout=subprocess.PIPE)
     
     return proc 
 
