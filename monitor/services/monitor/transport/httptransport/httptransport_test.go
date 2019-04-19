@@ -88,7 +88,7 @@ func TestNewServiceFiles(t *testing.T) {
 			method:             "GET",
 			url:                "http://example.com/files/owner/-1",
 			body:               ``,
-			expected:           `{"files":[{"owner_id":"1owner","server_id":"1","name":"1.cpp","body":"aGVsbG8gd29ybGQ=","status":""}]}`,
+			expected:           `{"files":[{"owner_id":"1owner","server_id":"1","name":"1.cpp","body":"hello world","status":""}]}`,
 			expectedStatusCode: 200,
 		},
 		{
