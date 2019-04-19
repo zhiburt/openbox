@@ -3,8 +3,6 @@ import { Container, Row, Col } from "shards-react";
 
 import Editor from "../components/add-new-post/Editor";
 
-
-
 class Viewer extends React.Component {
     constructor(props) {
         super(props);
