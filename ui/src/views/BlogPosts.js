@@ -180,15 +180,17 @@ class BlogPosts extends React.Component {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(d)
-    }).then(res => res.json())
-      .then(
-        (result) => {
-          console.log("RESULT S2222", result);
-        },
-        (error) => {
-          console.log("ERORR", error)
-        }
-      )
+    })
+    // invalid responce currently
+    .then((result) => result.json())
+    .then((result) => {
+      console.log("************");
+      console.log(result);
+    })
+    .catch((error) => {
+      this.componentDidMount();
+      console.error(error);
+    });
   }
 
   createFolder(file) {
